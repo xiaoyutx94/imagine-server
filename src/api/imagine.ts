@@ -22,6 +22,18 @@ export async function proxyRequest(c: Context) {
   try {
     const action = c.req.param("action");
 
+    // 映射 API action 到 Provider action
+    const actionMap: Record<string, string> = {
+      imagine: "generate",
+      edit: "edit",
+      text: "text",
+      video: "video",
+      upscaler: "upscaler",
+      "task-status": "task-status",
+    };
+
+    const providerAction = actionMap[action] || action;
+
     // 对于 edit action，使用 FormData
     let model: string;
     let params: any;
@@ -59,7 +71,7 @@ export async function proxyRequest(c: Context) {
           error: "Missing required parameters",
           message: "model is required",
         },
-        400
+        400,
       );
     }
 
@@ -69,7 +81,7 @@ export async function proxyRequest(c: Context) {
           error: "Missing action",
           message: "action parameter is required in URL",
         },
-        400
+        400,
       );
     }
 
@@ -88,12 +100,12 @@ export async function proxyRequest(c: Context) {
             .getProviderNames()
             .join(", ")}`,
         },
-        400
+        400,
       );
     }
 
     // 委托给 Provider 处理
-    const result = await provider.handleRequest(c, action, {
+    const result = await provider.handleRequest(c, providerAction, {
       model: modelKey,
       ...params,
     });
@@ -107,7 +119,7 @@ export async function proxyRequest(c: Context) {
         message:
           error.message || "An error occurred while processing the request",
       },
-      500
+      500,
     );
   }
 }
@@ -140,7 +152,7 @@ export async function getTaskStatus(c: Context) {
               status: "error",
               message: `Provider '${taskData.provider}' not found`,
             },
-            404
+            404,
           );
         }
 
@@ -167,7 +179,7 @@ export async function getTaskStatus(c: Context) {
           status: "error",
           message: "The task ID does not exist or has expired",
         },
-        404
+        404,
       );
     }
   } catch (error: any) {

@@ -3,6 +3,7 @@ import type { Bindings } from "../types";
 import { GiteeProvider } from "./gitee";
 import { HuggingFaceProvider } from "./huggingface";
 import { ModelScopeProvider } from "./modelscope";
+import { A4FProvider } from "./a4f";
 import { hasAvailableToken } from "../api/token-manager";
 
 /**
@@ -104,6 +105,7 @@ export const providerRegistry = new ProviderRegistry();
 providerRegistry.register(new GiteeProvider());
 providerRegistry.register(new HuggingFaceProvider());
 providerRegistry.register(new ModelScopeProvider());
+providerRegistry.register(new A4FProvider());
 
 /**
  * 获取所有可用模型列表（不过滤）
@@ -116,7 +118,7 @@ export function getAvailableModels(): ModelConfig[] {
  * 获取所有可用模型列表（根据 token 可用性过滤）
  */
 export async function getAvailableModelsFiltered(
-  env: Bindings
+  env: Bindings,
 ): Promise<ModelConfig[]> {
   return providerRegistry.getAllAvailableModelConfigs(env);
 }

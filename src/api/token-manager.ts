@@ -2,7 +2,7 @@ import type { Context } from "hono";
 import type { Storage } from "unstorage";
 import type { Bindings } from "../types";
 
-export type Provider = "huggingface" | "gitee" | "modelscope";
+export type Provider = "huggingface" | "gitee" | "modelscope" | "a4f";
 
 // Token 状态存储结构
 interface TokenStatusStore {
@@ -34,7 +34,7 @@ function getKVKey(provider: Provider): string {
 // 从存储获取 Token 状态
 async function getTokenStatusStore(
   provider: Provider,
-  storage: Storage
+  storage: Storage,
 ): Promise<TokenStatusStore> {
   const currentDate =
     provider === "huggingface" ? getUTCDateString() : getBeijingDateString();
@@ -63,7 +63,7 @@ async function getTokenStatusStore(
   } catch (error) {
     console.error(
       `[TokenManager] Error reading storage for ${provider}:`,
-      error
+      error,
     );
     return defaultStore;
   }
@@ -73,7 +73,7 @@ async function getTokenStatusStore(
 async function saveTokenStatusStore(
   provider: Provider,
   store: TokenStatusStore,
-  storage: Storage
+  storage: Storage,
 ): Promise<void> {
   try {
     const key = getKVKey(provider);
@@ -84,7 +84,7 @@ async function saveTokenStatusStore(
   } catch (error) {
     console.error(
       `[TokenManager] Error writing storage for ${provider}:`,
-      error
+      error,
     );
   }
 }
@@ -105,6 +105,9 @@ export function getTokens(provider: Provider, env: Bindings): string[] {
     case "modelscope":
       tokensString = env.MODELSCOPE_TOKENS;
       break;
+    case "a4f":
+      tokensString = env.A4F_TOKENS;
+      break;
   }
 
   if (!tokensString) return [];
@@ -120,13 +123,13 @@ export function getTokens(provider: Provider, env: Bindings): string[] {
  */
 async function getNextAvailableToken(
   provider: Provider,
-  env: Bindings
+  env: Bindings,
 ): Promise<string | null> {
   const tokens = getTokens(provider, env);
 
   if (!env.storage) {
     console.warn(
-      "[TokenManager] Storage not available, returning random token"
+      "[TokenManager] Storage not available, returning random token",
     );
     if (tokens.length === 0) return null;
     // 随机返回一个 token
@@ -150,11 +153,11 @@ async function getNextAvailableToken(
 export async function markTokenExhausted(
   provider: Provider,
   token: string,
-  env: Bindings
+  env: Bindings,
 ): Promise<void> {
   if (!env.storage) {
     console.warn(
-      "[TokenManager] Storage not available, cannot mark token as exhausted"
+      "[TokenManager] Storage not available, cannot mark token as exhausted",
     );
     return;
   }
@@ -166,8 +169,8 @@ export async function markTokenExhausted(
   console.log(
     `[TokenManager] Token exhausted for ${provider}: ${token.substring(
       0,
-      8
-    )}...`
+      8,
+    )}...`,
   );
 }
 
@@ -204,7 +207,7 @@ export async function getTokenStats(provider: Provider, env: Bindings) {
 export async function runWithTokenRetry<T>(
   provider: Provider,
   env: Bindings,
-  operation: (token: string | null) => Promise<T>
+  operation: (token: string | null) => Promise<T>,
 ): Promise<T> {
   const tokens = getTokens(provider, env);
 
@@ -255,8 +258,8 @@ export async function runWithTokenRetry<T>(
         console.warn(
           `[TokenManager] ${provider} Token ${token.substring(
             0,
-            8
-          )}... exhausted. Switching to next token.`
+            8,
+          )}... exhausted. Switching to next token.`,
         );
         await markTokenExhausted(provider, token, env);
         continue; // 重试下一个 Token
@@ -276,11 +279,11 @@ export async function runWithTokenRetry<T>(
  */
 export async function resetTokenStatus(
   provider: Provider,
-  env: Bindings
+  env: Bindings,
 ): Promise<void> {
   if (!env.storage) {
     console.warn(
-      "[TokenManager] Storage not available, cannot reset token status"
+      "[TokenManager] Storage not available, cannot reset token status",
     );
     return;
   }
@@ -302,7 +305,7 @@ export async function resetTokenStatus(
  */
 export async function hasAvailableToken(
   provider: Provider,
-  env: Bindings
+  env: Bindings,
 ): Promise<boolean> {
   const tokens = getTokens(provider, env);
 
@@ -327,7 +330,7 @@ export async function hasAvailableToken(
  * 获取所有 Provider 的 Token 状态概览
  */
 export async function getAllTokenStats(env: Bindings) {
-  const providers: Provider[] = ["huggingface", "gitee", "modelscope"];
+  const providers: Provider[] = ["huggingface", "gitee", "modelscope", "a4f"];
   const stats: Record<string, any> = {};
 
   for (const provider of providers) {

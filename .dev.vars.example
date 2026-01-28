@@ -9,6 +9,7 @@ API_TOKEN=your-secret-token-1,your-secret-token-2
 HUGGINGFACE_TOKENS=hf_token1,hf_token2,hf_token3
 GITEE_TOKENS=gitee_token1,gitee_token2
 MODELSCOPE_TOKENS=ms_token1,ms_token2
+A4F_TOKENS=a4f_token1,a4f_token2
 
 # 注意：
 # 1. Cloudflare Workers 使用 KV binding，不需要配置 REDIS_URL

@@ -14,7 +14,7 @@ declare global {
         expiration?: number;
         expirationTtl?: number;
         metadata?: any;
-      }
+      },
     ): Promise<void>;
     delete(key: string): Promise<void>;
     list(options?: {
@@ -34,6 +34,7 @@ export type Bindings = {
   HUGGINGFACE_TOKENS?: string;
   GITEE_TOKENS?: string;
   MODELSCOPE_TOKENS?: string;
+  A4F_TOKENS?: string;
   // Cloudflare KV (可选)
   TOKEN_STATUS_KV?: KVNamespace;
   // Unstorage 实例

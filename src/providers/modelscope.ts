@@ -13,6 +13,7 @@ const MS_GENERATE_API_URL =
   "https://api-inference.modelscope.cn/v1/images/generations";
 const MS_CHAT_API_URL =
   "https://api-inference.modelscope.cn/v1/chat/completions";
+const MS_TASK_API_BASE_URL = "https://api-inference.modelscope.cn/v1/tasks";
 const QWEN_IMAGE_EDIT_BASE_API_URL =
   "https://linoyts-qwen-image-edit-2509-fast.hf.space";
 
@@ -114,6 +115,10 @@ export class ModelScopeProvider extends BaseProvider {
 
   private async handleGenerate(env: any, params: any): Promise<any> {
     return await runWithTokenRetry("modelscope", env, async (token) => {
+      if (!token) {
+        throw new Error("Model Scope requires authentication token");
+      }
+
       const { model, prompt, ar, seed, steps, guidance } = params;
       const modelId = this.getApiModelId(model);
       const { width, height } = getDimensions(ar || "1:1", true);
@@ -133,11 +138,13 @@ export class ModelScopeProvider extends BaseProvider {
         requestBody.guidance = guidance;
       }
 
+      // 步骤 1: 发送异步请求，获取 task_id
       const response = await fetch(MS_GENERATE_API_URL, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
+          "X-ModelScope-Async-Mode": "true",
         },
         body: JSON.stringify(requestBody),
       });
@@ -145,16 +152,19 @@ export class ModelScopeProvider extends BaseProvider {
       if (!response.ok) {
         const errData: any = await response.json().catch(() => ({}));
         throw new Error(
-          errData.message || `Model Scope API Error: ${response.status}`
+          errData.message || `Model Scope API Error: ${response.status}`,
         );
       }
 
       const data: any = await response.json();
-      const imageUrl = data.images?.[0]?.url;
+      const taskId = data.task_id;
 
-      if (!imageUrl) {
-        throw new Error("Invalid response from Model Scope");
+      if (!taskId || typeof taskId !== "string") {
+        throw new Error("Invalid response from Model Scope: missing task_id");
       }
+
+      // 步骤 2: 轮询任务状态
+      const imageUrl = await this.pollTaskStatus(token, taskId);
 
       return {
         url: imageUrl,
@@ -169,6 +179,10 @@ export class ModelScopeProvider extends BaseProvider {
 
   private async handleEdit(env: any, params: any): Promise<any> {
     return await runWithTokenRetry("modelscope", env, async (token) => {
+      if (!token) {
+        throw new Error("Model Scope requires authentication token");
+      }
+
       const {
         model,
         image,
@@ -190,7 +204,7 @@ export class ModelScopeProvider extends BaseProvider {
           const url = await uploadToGradio(
             QWEN_IMAGE_EDIT_BASE_API_URL,
             blob,
-            token
+            token,
           );
           return url;
         }
@@ -207,11 +221,13 @@ export class ModelScopeProvider extends BaseProvider {
         guidance: guidance,
       };
 
+      // 步骤 1: 发送异步请求，获取 task_id
       const response = await fetch(MS_GENERATE_API_URL, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
+          "X-ModelScope-Async-Mode": "true",
         },
         body: JSON.stringify(requestBody),
       });
@@ -219,16 +235,19 @@ export class ModelScopeProvider extends BaseProvider {
       if (!response.ok) {
         const errData: any = await response.json().catch(() => ({}));
         throw new Error(
-          errData.message || `Model Scope Image Edit Error: ${response.status}`
+          errData.message || `Model Scope Image Edit Error: ${response.status}`,
         );
       }
 
       const data: any = await response.json();
-      const resultUrl = data.images?.[0]?.url;
+      const taskId = data.task_id;
 
-      if (!resultUrl) {
-        throw new Error("Invalid response from Model Scope");
+      if (!taskId || typeof taskId !== "string") {
+        throw new Error("Invalid response from Model Scope: missing task_id");
       }
+
+      // 步骤 2: 轮询任务状态
+      const resultUrl = await this.pollTaskStatus(token, taskId);
 
       return {
         url: resultUrl,
@@ -271,5 +290,60 @@ export class ModelScopeProvider extends BaseProvider {
 
       return { text: content || prompt };
     });
+  }
+
+  /**
+   * 轮询任务状态，直到任务完成或失败
+   * @param token API Token
+   * @param taskId 任务 ID
+   * @returns 生成的图片 URL
+   */
+  private async pollTaskStatus(token: string, taskId: string): Promise<string> {
+    const maxAttempts = 60; // 最多轮询 60 次（5 分钟）
+    const pollInterval = 5000; // 每 5 秒轮询一次
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      // 等待 5 秒
+      await new Promise((resolve) => setTimeout(resolve, pollInterval));
+
+      const taskUrl = `${MS_TASK_API_BASE_URL}/${taskId}`;
+      const response = await fetch(taskUrl, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+          "X-ModelScope-Task-Type": "image_generation",
+        },
+      });
+
+      if (!response.ok) {
+        const errData: any = await response.json().catch(() => ({}));
+        throw new Error(
+          errData.message ||
+            `Model Scope Task Status Error: ${response.status}`,
+        );
+      }
+
+      const taskData: any = await response.json();
+      const taskStatus = taskData.task_status;
+
+      if (taskStatus === "SUCCEED") {
+        const imageUrl = taskData.output_images?.[0];
+        if (!imageUrl) {
+          throw new Error("Invalid task response: missing output_images");
+        }
+        return imageUrl;
+      } else if (taskStatus === "FAILED") {
+        throw new Error(
+          `Model Scope task failed: ${taskData.error_message || "Unknown error"}`,
+        );
+      }
+
+      // 任务仍在进行中，继续轮询
+    }
+
+    throw new Error(
+      "Model Scope task timeout: exceeded maximum polling attempts",
+    );
   }
 }

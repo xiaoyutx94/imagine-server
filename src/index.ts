@@ -15,7 +15,7 @@ import { createAutoStorage } from "./storage";
 import type { Bindings } from "./types";
 
 export const app = new Hono<{ Bindings: Bindings }>();
-const webApp = new Hono<{ Bindings: Bindings }>();
+export const webApp = new Hono<{ Bindings: Bindings }>();
 
 // 初始化存储（应用启动时）
 let globalStorage: any = null;
@@ -41,7 +41,7 @@ app.use(
     exposeHeaders: ["Content-Length", "Content-Type"],
     maxAge: 86400,
     credentials: true,
-  })
+  }),
 );
 app.use(logger());
 
@@ -60,7 +60,7 @@ app.use("/v1/*", async (c, next) => {
   if (!authHeader) {
     return c.json(
       { error: "Unauthorized", message: "Missing Authorization header" },
-      401
+      401,
     );
   }
 
@@ -68,7 +68,7 @@ app.use("/v1/*", async (c, next) => {
   if (!authHeader.startsWith("Bearer ")) {
     return c.json(
       { error: "Unauthorized", message: "Invalid Authorization format" },
-      401
+      401,
     );
   }
 
@@ -114,7 +114,7 @@ app.get("/health", (c) => {
   return c.json({
     status: "ok",
     timestamp: new Date().toISOString(),
-    version: "1.1.1",
+    version: "1.2.0",
   });
 });
 

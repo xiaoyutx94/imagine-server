@@ -8,7 +8,7 @@ import { resolve } from "path";
 import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { Hono } from "hono";
-import app from "../src/index";
+import { app } from "../src/index";
 
 // 加载环境变量，优先级：.env.local > .env
 config({ path: resolve(process.cwd(), ".env.local") });
@@ -33,7 +33,7 @@ console.log(`🔧 Port: ${port}`);
 if (process.env.API_TOKEN) {
   console.log(`🔐 API Authentication: Enabled`);
   console.log(
-    `   Configured tokens: ${process.env.API_TOKEN.split(",").length}`
+    `   Configured tokens: ${process.env.API_TOKEN.split(",").length}`,
   );
 } else {
   console.log(`⚠️  API Authentication: Disabled (no API_TOKEN configured)`);
@@ -56,11 +56,11 @@ serve(
     console.log(`   - Frontend:     http://localhost:${info.port}/`);
     console.log(`   - Health check: http://localhost:${info.port}/api/health`);
     console.log(
-      `   - Models list:  http://localhost:${info.port}/api/v1/models`
+      `   - Models list:  http://localhost:${info.port}/api/v1/models`,
     );
     console.log(
-      `   - Token stats:  http://localhost:${info.port}/api/v1/token-stats/all`
+      `   - Token stats:  http://localhost:${info.port}/api/v1/token-stats/all`,
     );
     console.log(`\n💡 Press Ctrl+C to stop the server\n`);
-  }
+  },
 );

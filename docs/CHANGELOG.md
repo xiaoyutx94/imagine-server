@@ -5,6 +5,143 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-01-28
+
+### Added
+
+- 🎨 **新增 A4F Provider**:
+  - 支持 4 个图片生成模型（Z-Image, Imagen 4/3.5, FLUX.1 Schnell）
+  - 支持 7 个文本生成模型（Gemini, DeepSeek, Qwen, Kimi, GLM）
+  - 完整的 Token 轮换和配额管理
+  - OpenAI 兼容的 API 格式
+  - 自动宽高比到尺寸映射
+  - 新增文档：[A4F Provider 使用指南](docs/A4F_PROVIDER.md)
+  - 新增文档：[A4F 集成总结](docs/A4F_INTEGRATION_SUMMARY.md)
+
+- 🖼️ **Hugging Face 新增 Z-Image 模型**:
+  - 新增高质量 Z-Image 模型（1280x1280 默认分辨率）
+  - 支持 7 种分辨率选项（864x1536 到 1536x1104）
+  - Steps 范围：1-100（默认 30）
+  - Guidance Scale 范围：1-20（默认 4）
+  - 自动应用优化的 Negative Prompt
+  - 原 z-image-turbo 模型保持不变，提供快速生成选项
+  - 新增文档：[Z-Image 更新说明](docs/ZIMAGE_UPDATE.md)
+  - 新增文档：[Z-Image 更新日志](docs/HUGGINGFACE_ZIMAGE_CHANGELOG.md)
+
+- 🎯 **前端欢迎页面**:
+  - 创建美观的 HTML 欢迎页面
+  - 列出所有可用的 API 端点
+  - 提供快速导航和文档链接
+  - 响应式设计，支持移动端
+
+### Fixed
+
+- 🐛 **服务器路由修复**:
+  - 修复 `src/index.ts` 中重复的路由挂载问题
+  - 修复 API action 映射问题（`imagine` -> `generate`）
+  - 添加 action 映射表支持所有 API 端点
+
+### Changed
+
+- 🔧 **环境变量配置**:
+  - 在 `.env.example` 中添加 `A4F_TOKENS` 配置
+  - 在 `.dev.vars.example` 中添加 `A4F_TOKENS` 配置
+  - 在 `release/.env.example` 中添加 `A4F_TOKENS` 配置
+  - 更新 `src/types.d.ts` 添加 A4F_TOKENS 类型定义
+
+- 📦 **Provider 系统**:
+  - 在 Token Manager 中添加 `a4f` provider 支持
+  - 在 Provider Registry 中注册 A4FProvider
+  - 导出 A4FProvider 类供外部使用
+  - 支持 4 个 Provider：Hugging Face, Gitee AI, ModelScope, A4F
+
+- 📝 **版本更新**:
+  - 更新 package.json 版本号为 1.2.0
+  - 更新健康检查 API 返回版本号为 1.2.0
+
+### Technical Details
+
+- **新增文件**:
+  - `src/providers/a4f.ts` - A4F Provider 实现
+  - `public/index.html` - 前端欢迎页面
+
+- **修改的文件**:
+  - `src/providers/huggingface.ts` - 添加 Z-Image 模型支持
+  - `src/api/token-manager.ts` - 添加 A4F provider 支持
+  - `src/types.d.ts` - 添加 A4F_TOKENS 类型
+  - `src/providers/registry.ts` - 注册 A4FProvider
+  - `src/providers/index.ts` - 导出 A4FProvider
+  - `src/index.ts` - 修复路由问题
+  - `src/api/imagine.ts` - 添加 action 映射
+
+- **Z-Image 技术细节**:
+  - API 端点：`https://multimodalart-z-image.hf.space`
+  - 支持的分辨率：1280x1280, 1472x1104, 1104x1472, 1536x1024, 1024x1536, 1536x864, 864x1536
+  - 固定 Negative Prompt 提升图片质量
+  - 支持 CFG Normalization（默认关闭）
+
+- **A4F 技术细节**:
+  - 图片生成端点：`https://api.a4f.co/v1/images/generations`
+  - 文本生成端点：`https://api.a4f.co/v1/chat/completions`
+  - 支持自动 Token 轮换和配额管理
+  - OpenAI 兼容的请求/响应格式
+
+### Testing
+
+- ✅ TypeScript 编译通过
+- ✅ 所有 API 端点测试通过
+- ✅ 健康检查正常
+- ✅ 模型列表返回 27 个模型
+- ✅ Token 统计功能正常
+- ✅ 文本生成功能正常
+- ✅ 前端页面正常显示
+
+### Benefits
+
+- 🎯 **更多模型选择**: 新增 11 个 A4F 模型（4 个图片 + 7 个文本）
+- 🖼️ **更高图片质量**: Z-Image 模型支持更高分辨率和更多控制参数
+- ⚡ **灵活选择**: Z-Image 和 Z-Image Turbo 提供质量/速度两种选项
+- 🔧 **更稳定的服务**: 修复了路由和 action 映射问题
+- 📚 **更好的文档**: 新增 7 个详细的使用和集成文档
+- 🌐 **更友好的界面**: 美观的欢迎页面提供快速导航
+
+### Migration Guide
+
+如果你之前使用的是 `huggingface/z-image-turbo`，无需修改代码。
+
+如果你想使用新的高质量 Z-Image 模型：
+
+```diff
+{
+-  "model": "huggingface/z-image-turbo",
++  "model": "huggingface/z-image",
+  "prompt": "Your prompt here",
+  "ar": "1:1",
+-  "steps": 9
++  "steps": 30,
++  "guidance": 4
+}
+```
+
+如果你想使用 A4F Provider：
+
+1. 在环境变量中添加 `A4F_TOKENS`
+2. 使用 `a4f/` 前缀的模型 ID
+
+```bash
+# 图片生成
+curl -X POST http://localhost:3000/api/v1/imagine \
+  -H "Content-Type: application/json" \
+  -d '{"model": "a4f/imagen-4", "prompt": "A cute cat", "ar": "1:1"}'
+
+# 文本生成
+curl -X POST http://localhost:3000/api/v1/text \
+  -H "Content-Type: application/json" \
+  -d '{"model": "a4f/gemini-2.0-flash", "prompt": "Hello"}'
+```
+
+[1.2.0]: https://github.com/Amery2010/imagine-server/releases/tag/v1.2.0
+
 ## [1.1.0] - 2026-01-04
 
 ### Added

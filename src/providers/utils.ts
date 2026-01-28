@@ -25,6 +25,7 @@ export function extractCompleteEventData(sseStream: string): any | null {
   let isCompleteEvent = false;
 
   for (const line of lines) {
+    console.info(line);
     if (line.startsWith("event:")) {
       if (line.substring(6).trim() === "complete") {
         isCompleteEvent = true;
@@ -75,7 +76,7 @@ export function getBaseDimensions(ratio: string) {
 export function getDimensions(
   ratio: string,
   enableHD: boolean,
-  model?: string
+  model?: string,
 ): { width: number; height: number } {
   const base = getBaseDimensions(ratio);
 
@@ -85,7 +86,7 @@ export function getDimensions(
   if (
     model &&
     ["flux-1-schnell", "FLUX_1-Krea-dev", "FLUX.1-dev", "FLUX.2-dev"].includes(
-      model
+      model,
     )
   ) {
     multiplier = 1.5;
@@ -103,7 +104,7 @@ export function getDimensions(
 export async function uploadToGradio(
   baseUrl: string,
   blob: Blob,
-  token: string | null
+  token: string | null,
 ): Promise<string> {
   const formData = new FormData();
   formData.append("files", blob, "image.png");
