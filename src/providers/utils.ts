@@ -90,6 +90,8 @@ export function getDimensions(
     )
   ) {
     multiplier = 1.5;
+  } else if (model && ["z-image"].includes(model)) {
+    multiplier = 1;
   }
 
   return {

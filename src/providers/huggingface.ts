@@ -12,7 +12,7 @@ import {
 
 // API URLs
 const ZIMAGE_TURBO_BASE_API_URL = "https://luca115-z-image-turbo.hf.space";
-const ZIMAGE_BASE_API_URL = "https://victor-z-image-mcp.hf.space";
+const ZIMAGE_BASE_API_URL = "https://mrfakename-z-image.hf.space";
 const QWEN_IMAGE_BASE_API_URL = "https://mcp-tools-qwen-image-fast.hf.space";
 const OVIS_IMAGE_BASE_API_URL = "https://aidc-ai-ovis-image-7b.hf.space";
 const FLUX_SCHNELL_BASE_API_URL =
@@ -201,18 +201,17 @@ export class HuggingFaceProvider extends BaseProvider {
       if (modelId === "z-image") {
         // 新的 Z-Image 模型
         apiBaseUrl = ZIMAGE_BASE_API_URL;
-        const resolution = getZImageResolution(ar || "1:1");
         data = [
           prompt,
           ZIMAGE_NEGATIVE_PROMPT,
-          resolution,
-          finalSeed,
+          height,
+          width,
           steps || 30,
           guidance || 4,
-          false, // CFG Normalization
+          finalSeed,
           false, // Random Seed
         ];
-        endpoint = "generate";
+        endpoint = "generate_image";
       } else if (modelId === "flux-1-schnell") {
         apiBaseUrl = FLUX_SCHNELL_BASE_API_URL;
         data = [prompt, finalSeed, false, width, height, steps || 4];
