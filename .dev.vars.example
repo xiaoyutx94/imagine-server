@@ -20,6 +20,14 @@ MODELSLAB_TOKENS=modelslab_token1,modelslab_token2
 # GROK_API_BASE=https://api.x.ai/v1
 # OPENAI_API_BASE=https://api.openai.com/v1
 
+# S3 兼容存储配置（可选，主要用于云端或本地存储转存和生成持久预签名链接）
+# S3_ENDPOINT=https://<your-account-id>.r2.cloudflarestorage.com
+# S3_REGION=auto
+# S3_ACCESS_KEY_ID=your-access-key
+# S3_SECRET_ACCESS_KEY=your-secret-key
+# S3_BUCKET_NAME=your-bucket-name
+# S3_CDN_URL=https://cdn.yourdomain.com
+
 # 注意：
 # 1. Cloudflare Workers 使用 KV binding，不需要配置 REDIS_URL
 # 2. 生产环境请使用 wrangler secret 命令设置敏感信息

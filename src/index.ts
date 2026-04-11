@@ -13,6 +13,9 @@ import {
 } from "./api/token-manager";
 import { createAutoStorage } from "./storage";
 import type { Bindings } from "./types";
+import { S3Service } from "./services/s3";
+import { zValidator } from "@hono/zod-validator";
+import { z } from "zod";
 
 export const app = new Hono<{ Bindings: Bindings }>();
 export const webApp = new Hono<{ Bindings: Bindings }>();
@@ -131,6 +134,34 @@ app.get("/v1/token-stats/all", getAllTokenStatsHandler);
 
 // 重置 Token 状态（管理接口）
 app.post("/v1/token-reset", resetTokenStatusHandler);
+
+// 清理 S3 早期文件
+app.delete(
+  "/v1/storage/cleanup",
+  zValidator(
+    "query",
+    z.object({
+      startDate: z.string().datetime({ message: "Invalid ISO 8601 startDate" }),
+      endDate: z.string().datetime({ message: "Invalid ISO 8601 endDate" }),
+    })
+  ),
+  async (c) => {
+    try {
+      const s3 = new S3Service(c.env);
+      if (!s3.isActive) {
+        return c.json({ error: "S3 service is not enabled" }, 400);
+      }
+      const { startDate, endDate } = c.req.valid("query");
+      const deletedCount = await s3.cleanupOldFiles(
+        new Date(startDate),
+        new Date(endDate)
+      );
+      return c.json({ status: "success", deletedCount });
+    } catch (e: any) {
+      return c.json({ error: "Cleanup failed", message: e.message }, 500);
+    }
+  }
+);
 
 // 健康检查
 app.get("/health", (c) => {

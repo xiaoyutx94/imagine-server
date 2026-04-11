@@ -5,6 +5,7 @@ import {
   getAvailableModels,
   getAvailableModelsFiltered,
 } from "../providers";
+import { processGeneratedResult } from "../providers/utils";
 
 /**
  * 获取所有可用模型列表
@@ -142,7 +143,10 @@ export async function proxyRequest(c: Context) {
       return result;
     }
 
-    return c.json(result);
+    // 拦截结果并走统一存储逻辑
+    const finalResult = await processGeneratedResult(result, c.env);
+
+    return c.json(finalResult);
   } catch (error: any) {
     console.error("Proxy request error:", error);
     return c.json(
@@ -201,11 +205,14 @@ export async function getTaskStatus(c: Context) {
           token: taskData.token,
         });
 
-        return c.json(result);
+        const finalResult = await processGeneratedResult(result, c.env);
+        return c.json(finalResult);
       } else if (taskData.status === "success") {
+        const urlObj = { url: taskData.url };
+        const finalUrlObj = await processGeneratedResult(urlObj, c.env);
         return c.json({
           status: "success",
-          url: taskData.url,
+          url: finalUrlObj.url,
         });
       } else {
         return c.json({

@@ -17,6 +17,9 @@ importers:
       '@upstash/redis':
         specifier: ^1.36.0
         version: 1.36.0
+      aws4fetch:
+        specifier: ^1.0.20
+        version: 1.0.20
       dotenv:
         specifier: ^17.2.3
         version: 17.2.3
@@ -28,7 +31,7 @@ importers:
         version: 5.8.2
       unstorage:
         specifier: ^1.17.3
-        version: 1.17.3(@upstash/redis@1.36.0)(ioredis@5.8.2)
+        version: 1.17.3(@upstash/redis@1.36.0)(aws4fetch@1.0.20)(ioredis@5.8.2)
       zod:
         specifier: ^4.3.6
         version: 4.3.6
@@ -1461,6 +1464,9 @@ packages:
   at-least-node@1.0.0:
     resolution: {integrity: sha512-+q/t7Ekv1EDY2l6Gda6LLiX14rU9TV20Wa3ofeQmwPFZbOMo9DXrLbOjFaaclkXKWidIaopwAObQDqwWtGUjqg==}
     engines: {node: '>= 4.0.0'}
+
+  aws4fetch@1.0.20:
+    resolution: {integrity: sha512-/djoAN709iY65ETD6LKCtyyEI04XIBP5xVvfmNxsEP0uJB5tyaGBztSryRr4HqMStr9R06PisQE7m9zDTXKu6g==}
 
   axios@1.13.2:
     resolution: {integrity: sha512-VPk9ebNqPcy5lRGuSlKx752IlDatOjT9paPlm8A7yOuW2Fbvp4X3JznJtT4f0GzGLLiWE9W8onz51SqLYwzGaA==}
@@ -4033,6 +4039,8 @@ snapshots:
 
   at-least-node@1.0.0: {}
 
+  aws4fetch@1.0.20: {}
+
   axios@1.13.2(debug@4.4.3):
     dependencies:
       follow-redirects: 1.15.11(debug@4.4.3)
@@ -5304,7 +5312,7 @@ snapshots:
 
   universalify@2.0.1: {}
 
-  unstorage@1.17.3(@upstash/redis@1.36.0)(ioredis@5.8.2):
+  unstorage@1.17.3(@upstash/redis@1.36.0)(aws4fetch@1.0.20)(ioredis@5.8.2):
     dependencies:
       anymatch: 3.1.3
       chokidar: 4.0.3
@@ -5316,6 +5324,7 @@ snapshots:
       ufo: 1.6.1
     optionalDependencies:
       '@upstash/redis': 1.36.0
+      aws4fetch: 1.0.20
       ioredis: 5.8.2
 
   uri-js@4.4.1:

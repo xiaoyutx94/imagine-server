@@ -22,6 +22,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 🎨 **OpenAI Provider 集成**:
   - 新增 `OpenAIProvider` 官方原生的直接接入支持。
   - 现已支持 GPT Image 1.5 生图、GPT-5.4 文本生成（含基于 Responses API 的流式响应透传），并实现了 Sora 2 / Sora 2 Pro 视频任务回调。
+- ☁️ **S3 兼容存储接入与自动化托管**:
+  - 全业务流程剥离此前强制依赖第三方（如 Hugging Face Gradio 等）的临时图床转存机制。
+  - 完全适配边缘 Severless 原生环境要求（集成 `aws4fetch` 免 Native 依赖方案），支持向 AWS S3 / Cloudflare R2 / MinIO 并发上传与接管。
+  - 对于所有的生图或视频，后端将自动解析响应缓冲片并直传存储桶，默认分发含 24小时有效期的预签名 URL，亦可替换为您绑定的免签专用 `S3_CDN_URL` 以配合 CDN 使用。
+  - 追加 `DELETE /v1/storage/cleanup` 日期检索端点，授权操作人员清理、回收指定存量期的过期文件。
 - 🛠 **测试与持续集成**:
   - 引入了 Vitest 测试框架来构建健壮稳定的自动化测试机制。
 - 🔐 **认证与安全**:

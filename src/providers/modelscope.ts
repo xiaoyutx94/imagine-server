@@ -3,7 +3,7 @@ import { BaseProvider, type ModelConfig } from "./base";
 import { runWithTokenRetry } from "../api/token-manager";
 import {
   getDimensions,
-  uploadToGradio,
+  processFileUpload,
   DEFAULT_SYSTEM_PROMPT_CONTENT,
   FIXED_SYSTEM_PROMPT_SUFFIX,
 } from "./utils";
@@ -201,12 +201,14 @@ export class ModelScopeProvider extends BaseProvider {
         if (typeof blob === "string") {
           return blob;
         } else {
-          const url = await uploadToGradio(
-            QWEN_IMAGE_EDIT_BASE_API_URL,
+          const pathOrUrl = await processFileUpload(
             blob,
+            env,
+            QWEN_IMAGE_EDIT_BASE_API_URL,
             token,
+            (p) => `${QWEN_IMAGE_EDIT_BASE_API_URL}/gradio_api/file=${p}`
           );
-          return url;
+          return pathOrUrl;
         }
       });
 

@@ -40,6 +40,13 @@ export type Bindings = {
   GROK_TOKENS?: string;
   OPENAI_TOKENS?: string;
   ALLOWED_ORIGINS?: string;
+  // S3 Compatible Storage Config (可选)
+  S3_ENDPOINT?: string;
+  S3_REGION?: string;
+  S3_ACCESS_KEY_ID?: string;
+  S3_SECRET_ACCESS_KEY?: string;
+  S3_BUCKET_NAME?: string;
+  S3_CDN_URL?: string;
   // Cloudflare KV (可选)
   TOKEN_STATUS_KV?: KVNamespace;
   VIDEO_TASK_KV?: KVNamespace;

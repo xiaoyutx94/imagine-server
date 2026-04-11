@@ -1,6 +1,8 @@
 /**
  * Provider 通用工具函数
  */
+import { S3Service } from "../services/s3";
+import type { Bindings } from "../types";
 
 // System prompt for optimization
 export const FIXED_SYSTEM_PROMPT_SUFFIX =
@@ -132,4 +134,106 @@ export async function uploadToGradio(
   }
 
   return result[0];
+}
+
+/**
+ * 统一处理文件上传，优先使用 S3 (若配置)，否则退回 Gradio 上传
+ */
+export async function processFileUpload(
+  file: Blob | string,
+  env: Bindings,
+  gradioBaseUrl: string,
+  token: string | null,
+  buildFallbackUrl: (path: string) => string
+): Promise<string> {
+  // 已经是字符串(例如URL)的话直接返回
+  if (typeof file === "string") return file;
+
+  const s3 = new S3Service(env);
+  if (s3.isActive) {
+    // 获取 Content-Type，由于不同的环境 file 有可能不同，优先取 file.type
+    const contentType = file instanceof Blob ? file.type : "image/png";
+    const extension = contentType.includes("png") ? "png" : contentType.includes("jpeg") ? "jpg" : contentType.includes("webp") ? "webp" : "bin";
+    
+    // 如果是 Blob 的话直接传给 S3
+    const { url } = await s3.uploadFile(file, extension, contentType);
+    return url;
+  }
+
+  // 退回默认 Gradio 逻辑
+  const path = await uploadToGradio(gradioBaseUrl, file, token);
+  return buildFallbackUrl(path);
+}
+
+/**
+ * 拦截生成结果，将 Base64 或外部 URL 缓冲区上传至 S3，替换为自有的 S3 (CDN / Presigned) URL
+ */
+export async function processGeneratedResult(result: any, env: Bindings): Promise<any> {
+  if (!result || typeof result !== "object") return result;
+
+  const s3 = new S3Service(env);
+  if (!s3.isActive) return result;
+
+  const processUrl = async (url: string) => {
+    if (!url || typeof url !== "string") return url;
+    
+    // 如果已经是我们的 S3 链接，直接跳过
+    if (url.startsWith(s3["endpoint"]) || (s3["cdnUrl"] && url.startsWith(s3["cdnUrl"]))) {
+       return url;
+    }
+
+    try {
+      let buffer: ArrayBuffer | Buffer;
+      let contentType = "image/png";
+      let extension = "png";
+
+      if (url.startsWith("data:")) {
+        // Base64 URI (e.g. data:image/png;base64,.....)
+        const parts = url.split(",");
+        const meta = parts[0];
+        const base64Data = parts[1];
+        buffer = Buffer.from(base64Data, "base64");
+        
+        const mimeMatch = meta.match(/data:(.*?);/);
+        if (mimeMatch) {
+          contentType = mimeMatch[1];
+        }
+      } else if (url.startsWith("http")) {
+        // HTTP URL (Download from third-party)
+        const fetchRes = await fetch(url);
+        if (!fetchRes.ok) throw new Error(`Failed to download from temp url: ${fetchRes.status}`);
+        buffer = await fetchRes.arrayBuffer();
+        contentType = fetchRes.headers.get("content-type") || "image/png";
+      } else {
+        return url;
+      }
+
+      if (contentType.includes("jpeg") || contentType.includes("jpg")) extension = "jpg";
+      else if (contentType.includes("webp")) extension = "webp";
+      else if (contentType.includes("mp4") || contentType.includes("video")) {
+        extension = "mp4";
+        contentType = "video/mp4";
+      }
+
+      const uploadRes = await s3.uploadFile(buffer, extension, contentType);
+      return uploadRes.url;
+    } catch (e) {
+      console.warn("Failed to process generated result via S3, skipping:", e);
+      return url;
+    }
+  };
+
+  if (result.url) {
+    result.url = await processUrl(result.url);
+  }
+
+  if (Array.isArray(result.images)) {
+    for (const image of result.images) {
+      if (image.url) {
+        image.url = await processUrl(image.url);
+      }
+    }
+  }
+
+  return result;
 }

@@ -3,6 +3,7 @@ import { BaseProvider, type ModelConfig } from "./base";
 import { runWithTokenRetry } from "../api/token-manager";
 import {
   uploadToGradio,
+  processFileUpload,
   DEFAULT_SYSTEM_PROMPT_CONTENT,
   FIXED_SYSTEM_PROMPT_SUFFIX,
 } from "./utils";
@@ -191,10 +192,15 @@ export class GrokProvider extends BaseProvider {
         throw new Error("image parameter is required and must be an array");
       }
 
-      // 通过 uploadToGradio 上传图片获取可公开访问的 URL
+      // 通过统一的文件处理助手获取可公开访问的 URL
       const file = image[0];
-      const path = await uploadToGradio(GRADIO_UPLOAD_BASE_URL, file, null);
-      const imageUrl = `${GRADIO_UPLOAD_BASE_URL}/gradio_api/file=${path}`;
+      const imageUrl = await processFileUpload(
+        file,
+        env,
+        GRADIO_UPLOAD_BASE_URL,
+        null,
+        (path) => `${GRADIO_UPLOAD_BASE_URL}/gradio_api/file=${path}`
+      );
 
       const response = await fetch(
         `${env.GROK_API_BASE || DEFAULT_GROK_API_BASE}/images/edits`,

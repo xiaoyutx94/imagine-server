@@ -13,6 +13,7 @@
 - 🔌 **插件化架构** - 模块化的 Provider 系统，轻松扩展新的 AI 服务提供商
 - 🔄 **智能 Token 管理** - 自动切换和管理多个 API Token，配额耗尽时自动切换
 - 💾 **统一存储抽象** - 使用 Unstorage 支持 Redis、Cloudflare KV 等多种存储后端
+- ☁️ **S3 兼容存储托管** - 原生支持 AWS S3 / Cloudflare R2 自动化对象存取、Presigned 预签名以及 CDN 取代临时外链
 - 🌐 **多平台部署** - 支持 Cloudflare Workers、Vercel、Node.js 等多种部署环境
 - 🔐 **Bearer Token 认证** - 可选的 API 访问控制
 - 📊 **Token 统计** - 实时查看各提供商的 Token 使用情况
@@ -104,6 +105,14 @@ OPENAI_TOKENS=openai_token1,openai_token2
 # GEMINI_API_BASE=https://generativelanguage.googleapis.com/v1beta
 # GROK_API_BASE=https://api.x.ai/v1
 # OPENAI_API_BASE=https://api.openai.com/v1
+
+# S3 兼容存储配置（可选）
+# S3_ENDPOINT=https://<your-account-id>.r2.cloudflarestorage.com
+# S3_REGION=auto
+# S3_ACCESS_KEY_ID=your-access-key
+# S3_SECRET_ACCESS_KEY=your-secret-key
+# S3_BUCKET_NAME=your-bucket-name
+# S3_CDN_URL=https://cdn.yourdomain.com
 
 # 存储配置（选择其一）
 # Vercel KV (Upstash Redis)
@@ -451,6 +460,12 @@ Content-Type: application/json
 {
   "provider": "gitee"
 }
+```
+
+#### 数据清理
+
+```bash
+DELETE /v1/storage/cleanup?startDate=2024-01-01T00:00:00.000Z&endDate=2024-12-31T23:59:59.999Z
 ```
 
 ## 🎨 支持的模型

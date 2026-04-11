@@ -5,6 +5,7 @@ import {
   getDimensions,
   extractCompleteEventData,
   uploadToGradio,
+  processFileUpload,
   DEFAULT_SYSTEM_PROMPT_CONTENT,
   FIXED_SYSTEM_PROMPT_SUFFIX,
   VIDEO_NEGATIVE_PROMPT,
@@ -270,12 +271,14 @@ export class HuggingFaceProvider extends BaseProvider {
             image: { path: blob, meta: { _type: "gradio.FileData" } },
           };
         } else {
-          const path = await uploadToGradio(
-            QWEN_IMAGE_EDIT_BASE_API_URL,
+          const pathOrUrl = await processFileUpload(
             blob,
+            env,
+            QWEN_IMAGE_EDIT_BASE_API_URL,
             token,
+            (p) => p // HF expects raw path internally
           );
-          return { image: { path, meta: { _type: "gradio.FileData" } } };
+          return { image: { path: pathOrUrl, meta: { _type: "gradio.FileData" } } };
         }
       });
 
@@ -501,10 +504,12 @@ export class HuggingFaceProvider extends BaseProvider {
 
       const imageResponse = await fetch(imageUrl);
       const imageBlob = await imageResponse.blob();
-      const path = await uploadToGradio(
-        QWEN_IMAGE_EDIT_BASE_API_URL,
+      const pathOrUrl = await processFileUpload(
         imageBlob,
+        env,
+        QWEN_IMAGE_EDIT_BASE_API_URL,
         token,
+        (p) => `${QWEN_IMAGE_EDIT_BASE_API_URL}/gradio_api/file=${p}`
       );
 
       const queue = await fetch(
@@ -515,7 +520,7 @@ export class HuggingFaceProvider extends BaseProvider {
           body: JSON.stringify({
             data: [
               {
-                path: `${QWEN_IMAGE_EDIT_BASE_API_URL}/gradio_api/file=${path}`,
+                path: pathOrUrl,
                 meta: { _type: "gradio.FileData" },
               },
               "RealESRGAN_x4plus",
