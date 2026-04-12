@@ -26,24 +26,36 @@ export const VIDEO_NEGATIVE_PROMPT =
 export function extractCompleteEventData(sseStream: string): any | null {
   const lines = sseStream.split("\n");
   let isCompleteEvent = false;
+  let isErrorEvent = false;
 
   for (const line of lines) {
     console.info(line);
     if (line.startsWith("event:")) {
-      if (line.substring(6).trim() === "complete") {
+      const eventType = line.substring(6).trim();
+      if (eventType === "complete") {
         isCompleteEvent = true;
-      } else if (line.substring(6).trim() === "error") {
-        throw new Error("SSE stream error event received");
+        isErrorEvent = false;
+      } else if (eventType === "error") {
+        isCompleteEvent = false;
+        isErrorEvent = true;
       } else {
         isCompleteEvent = false;
+        isErrorEvent = false;
       }
-    } else if (line.startsWith("data:") && isCompleteEvent) {
-      const jsonData = line.substring(5).trim();
-      try {
-        return JSON.parse(jsonData);
-      } catch (e) {
-        console.error("Error parsing JSON data:", e);
-        return null;
+    } else if (line.startsWith("data:")) {
+      if (isErrorEvent) {
+        // 提取上游错误详情用于诊断
+        const errorData = line.substring(5).trim();
+        throw new Error(`SSE stream error event received: ${errorData}`);
+      }
+      if (isCompleteEvent) {
+        const jsonData = line.substring(5).trim();
+        try {
+          return JSON.parse(jsonData);
+        } catch (e) {
+          console.error("Error parsing JSON data:", e);
+          return null;
+        }
       }
     }
   }

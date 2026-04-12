@@ -1,10 +1,13 @@
 import type { Context } from "hono";
 import { BaseProvider, type ModelConfig } from "./base";
-import { runWithTokenRetry, markTokenExhausted, encryptTokenForStorage } from "../api/token-manager";
+import {
+  runWithTokenRetry,
+  markTokenExhausted,
+  encryptTokenForStorage,
+} from "../api/token-manager";
 import {
   getDimensions,
   extractCompleteEventData,
-  uploadToGradio,
   processFileUpload,
   DEFAULT_SYSTEM_PROMPT_CONTENT,
   FIXED_SYSTEM_PROMPT_SUFFIX,
@@ -13,7 +16,7 @@ import {
 import { fetchWithTimeout, TIMEOUT } from "../utils/fetch-with-timeout";
 
 // API URLs
-const ZIMAGE_TURBO_BASE_API_URL = "https://luca115-z-image-turbo.hf.space";
+const ZIMAGE_TURBO_BASE_API_URL = "https://rahul7star-z-image-turbo.hf.space";
 const ZIMAGE_BASE_API_URL = "https://mrfakename-z-image.hf.space";
 const QWEN_IMAGE_BASE_API_URL = "https://mcp-tools-qwen-image-fast.hf.space";
 const OVIS_IMAGE_BASE_API_URL = "https://aidc-ai-ovis-image-7b.hf.space";
@@ -29,6 +32,30 @@ const UPSCALER_BASE_API_URL = "https://tuan2308-upscaler.hf.space";
 // Z-Image Negative Prompt
 const ZIMAGE_NEGATIVE_PROMPT =
   "worst quality, low quality, JPEG compression artifacts, ugly, incomplete, extra fingers, poorly drawn hands, poorly drawn face, deformed, disfigured, malformed limbs, fused fingers, cluttered background, three legs";
+/**
+ * 安全解析 Gradio 入队响应
+ * HF Space 不可用时（sleeping/building/error）会返回纯文本而非 JSON，
+ * 直接 .json() 会抛出无意义的 JSON parse 错误
+ */
+async function parseGradioQueueResponse(response: Response): Promise<any> {
+  if (!response.ok) {
+    const text = await response.text().catch(() => "");
+    throw new Error(
+      `Hugging Face Space unavailable (HTTP ${response.status}): ${text.substring(0, 200)}`,
+    );
+  }
+
+  const text = await response.text();
+  try {
+    return JSON.parse(text);
+  } catch {
+    // 纯文本说明 Space 处于不可用状态（sleeping, building 等）
+    throw new Error(
+      `Hugging Face Space returned non-JSON response: ${text.substring(0, 200)}`,
+    );
+  }
+}
+
 /**
  * Hugging Face Provider
  */
@@ -169,7 +196,7 @@ export class HuggingFaceProvider extends BaseProvider {
       const { model, prompt, ar = "1:1", seed, steps, guidance } = params;
       const modelId = this.getApiModelId(model);
       const finalSeed = seed ?? Math.round(Math.random() * 2147483647);
-      const { width, height } = getDimensions(ar || "1:1", true);
+      const { width, height } = getDimensions(ar || "1:1", true, modelId);
 
       let apiBaseUrl: string;
       let data: any[];
@@ -211,7 +238,7 @@ export class HuggingFaceProvider extends BaseProvider {
       } else {
         // z-image-turbo
         apiBaseUrl = ZIMAGE_TURBO_BASE_API_URL;
-        data = [prompt, height, width, steps || 9, finalSeed, false];
+        data = [prompt, height, width, steps || 9, finalSeed, false, 1];
         endpoint = "generate_image";
       }
 
@@ -220,26 +247,41 @@ export class HuggingFaceProvider extends BaseProvider {
       };
       if (token) headers["Authorization"] = `Bearer ${token}`;
 
-      const queue = await fetchWithTimeout(`${apiBaseUrl}/gradio_api/call/${endpoint}`, {
-        timeout: TIMEOUT.SHORT,
-        method: "POST",
-        headers,
-        body: JSON.stringify({ data }),
-      });
+      const queue = await fetchWithTimeout(
+        `${apiBaseUrl}/gradio_api/call/${endpoint}`,
+        {
+          timeout: TIMEOUT.SHORT,
+          method: "POST",
+          headers,
+          body: JSON.stringify({ data }),
+        },
+      );
 
-      const queueResult: any = await queue.json();
+      const queueResult: any = await parseGradioQueueResponse(queue);
       const response = await fetchWithTimeout(
         `${apiBaseUrl}/gradio_api/call/${endpoint}/${queueResult.event_id}`,
-        { timeout: TIMEOUT.LONG, ...({ headers }) },
+        { timeout: TIMEOUT.LONG, ...{ headers } },
       );
       const result = await response.text();
       const eventData = extractCompleteEventData(result);
 
       if (!eventData) throw new Error("Invalid response from Hugging Face");
 
+      // SSE returns nested structure: data[0] = [{image: {url: ...}, caption: null}]
+      let url: string | undefined;
+      if (Array.isArray(eventData[0]) && eventData[0][0]?.image?.url) {
+        url = eventData[0][0].image.url;
+      } else if (eventData[0]?.image?.url) {
+        url = eventData[0].image.url;
+      } else if (eventData[0]?.url) {
+        url = eventData[0].url;
+      } else if (typeof eventData[0] === "string") {
+        url = eventData[0];
+      }
+
       // 其他模型的标准响应格式
       return {
-        url: eventData[0].url,
+        url,
         width,
         height,
         seed: finalSeed,
@@ -278,9 +320,11 @@ export class HuggingFaceProvider extends BaseProvider {
             env,
             QWEN_IMAGE_EDIT_BASE_API_URL,
             token,
-            (p) => p // HF expects raw path internally
+            (p) => p, // HF expects raw path internally
           );
-          return { image: { path: pathOrUrl, meta: { _type: "gradio.FileData" } } };
+          return {
+            image: { path: pathOrUrl, meta: { _type: "gradio.FileData" } },
+          };
         }
       });
 
@@ -314,12 +358,12 @@ export class HuggingFaceProvider extends BaseProvider {
           },
         );
 
-        const queueResult: any = await queue.json();
+        const queueResult: any = await parseGradioQueueResponse(queue);
         const response = await fetchWithTimeout(
           QWEN_IMAGE_EDIT_BASE_API_URL +
             "/gradio_api/call/infer/" +
             queueResult.event_id,
-          { timeout: TIMEOUT.LONG, ...({ headers }) },
+          { timeout: TIMEOUT.LONG, ...{ headers } },
         );
         const result = await response.text();
         const eventData = extractCompleteEventData(result);
@@ -415,7 +459,8 @@ export class HuggingFaceProvider extends BaseProvider {
             },
           );
 
-          const { event_id: taskId }: any = await queue.json();
+          const { event_id: taskId }: any =
+            await parseGradioQueueResponse(queue);
 
           const encryptedToken = await encryptTokenForStorage(token!, env);
           await env.VIDEO_TASK_KV.put(
@@ -452,7 +497,7 @@ export class HuggingFaceProvider extends BaseProvider {
     try {
       const videoResponse = await fetchWithTimeout(
         WAN2_VIDEO_API_URL + "/gradio_api/call/generate_video/" + taskId,
-        { timeout: TIMEOUT.LONG, ...({ headers }) },
+        { timeout: TIMEOUT.LONG, ...{ headers } },
       );
       const text = await videoResponse.text();
       const eventData = extractCompleteEventData(text);
@@ -527,14 +572,16 @@ export class HuggingFaceProvider extends BaseProvider {
       };
       if (token) headers["Authorization"] = `Bearer ${token}`;
 
-      const imageResponse = await fetchWithTimeout(imageUrl, { timeout: TIMEOUT.DEFAULT });
+      const imageResponse = await fetchWithTimeout(imageUrl, {
+        timeout: TIMEOUT.DEFAULT,
+      });
       const imageBlob = await imageResponse.blob();
       const pathOrUrl = await processFileUpload(
         imageBlob,
         env,
         QWEN_IMAGE_EDIT_BASE_API_URL,
         token,
-        (p) => `${QWEN_IMAGE_EDIT_BASE_API_URL}/gradio_api/file=${p}`
+        (p) => `${QWEN_IMAGE_EDIT_BASE_API_URL}/gradio_api/file=${p}`,
       );
 
       const queue = await fetchWithTimeout(
@@ -558,12 +605,12 @@ export class HuggingFaceProvider extends BaseProvider {
         },
       );
 
-      const queueResult: any = await queue.json();
+      const queueResult: any = await parseGradioQueueResponse(queue);
       const response = await fetchWithTimeout(
         UPSCALER_BASE_API_URL +
           "/gradio_api/call/realesrgan/" +
           queueResult.event_id,
-        { timeout: TIMEOUT.LONG, ...({ headers }) },
+        { timeout: TIMEOUT.LONG, ...{ headers } },
       );
       const result = await response.text();
       const eventData = extractCompleteEventData(result);

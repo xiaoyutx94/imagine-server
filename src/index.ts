@@ -137,7 +137,11 @@ function createAuthMiddleware(tokenSource: "API_TOKEN" | "ADMIN_TOKEN") {
 }
 
 // 管理路由路径前缀（需要 ADMIN_TOKEN）
-const ADMIN_PATHS = ["/v1/token-stats", "/v1/token-reset", "/v1/storage/cleanup"];
+const ADMIN_PATHS = [
+  "/v1/token-stats",
+  "/v1/token-reset",
+  "/v1/storage/cleanup",
+];
 
 // 统一认证中间件：根据路径自动选择 Token 源
 app.use("/v1/*", async (c, next) => {
@@ -161,10 +165,18 @@ app.get("/v1/models/all", (c) => {
 });
 
 // RESTful 风格的 AI 服务代理 API (通过速率限制防止滥用，限制 60次/分钟)
-app.post("/v1/:action", rateLimiter({ limit: 60, windowMs: 60_000 }), proxyRequest);
+app.post(
+  "/v1/:action",
+  rateLimiter({ limit: 60, windowMs: 60_000 }),
+  proxyRequest,
+);
 
 // 查询异步任务状态（轮询接口，放宽到 120次/分钟）
-app.get("/v1/task-status", rateLimiter({ limit: 120, windowMs: 60_000 }), getTaskStatus);
+app.get(
+  "/v1/task-status",
+  rateLimiter({ limit: 120, windowMs: 60_000 }),
+  getTaskStatus,
+);
 
 // === 管理接口 ===
 
@@ -185,7 +197,7 @@ app.delete(
     z.object({
       startDate: z.string().datetime({ message: "Invalid ISO 8601 startDate" }),
       endDate: z.string().datetime({ message: "Invalid ISO 8601 endDate" }),
-    })
+    }),
   ),
   async (c) => {
     try {
@@ -196,13 +208,13 @@ app.delete(
       const { startDate, endDate } = c.req.valid("query");
       const deletedCount = await s3.cleanupOldFiles(
         new Date(startDate),
-        new Date(endDate)
+        new Date(endDate),
       );
       return c.json({ status: "success", deletedCount });
     } catch (e: any) {
       return c.json({ error: "Cleanup failed", message: e.message }, 500);
     }
-  }
+  },
 );
 
 // 健康检查
@@ -210,7 +222,7 @@ app.get("/health", (c) => {
   return c.json({
     status: "ok",
     timestamp: new Date().toISOString(),
-    version: "1.3.0",
+    version: "1.3.2",
   });
 });
 
