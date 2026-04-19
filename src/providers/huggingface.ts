@@ -16,7 +16,7 @@ import {
 import { fetchWithTimeout, TIMEOUT } from "../utils/fetch-with-timeout";
 
 // API URLs
-const ZIMAGE_TURBO_BASE_API_URL = "https://rahul7star-z-image-turbo.hf.space";
+const ZIMAGE_TURBO_BASE_API_URL = "https://mrfakename-z-image-turbo.hf.space";
 const ZIMAGE_BASE_API_URL = "https://mrfakename-z-image.hf.space";
 const QWEN_IMAGE_BASE_API_URL = "https://mcp-tools-qwen-image-fast.hf.space";
 const OVIS_IMAGE_BASE_API_URL = "https://aidc-ai-ovis-image-7b.hf.space";
@@ -238,7 +238,7 @@ export class HuggingFaceProvider extends BaseProvider {
       } else {
         // z-image-turbo
         apiBaseUrl = ZIMAGE_TURBO_BASE_API_URL;
-        data = [prompt, height, width, steps || 9, finalSeed, false, 1];
+        data = [prompt, height, width, steps || 9, finalSeed, false];
         endpoint = "generate_image";
       }
 
